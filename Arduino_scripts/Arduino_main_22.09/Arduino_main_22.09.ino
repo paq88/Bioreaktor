@@ -12,9 +12,8 @@ int isRunning = 0;
 float tempInput; // Temperature we want
 float tempInsideOutput; // Temperature we have inside
 float tempOutsideOutput; // Temperature we have outside
-float phInput; // pH we want
-float phValueOutput; // pH we have
-float o2ValueOutput;
+int phInput; // pH we want
+int phValueOutput; // pH we have
 int oxygenInput;
 int oxygenOutput;
 int stirRPM;
@@ -102,7 +101,7 @@ void loop() {
   
   //=========================================== INPUT READ ==================================================
   sampleSignal = 0;
-  commentOutput = "test_comment";
+  commentOutput = "";
   isRunning = 1;
   
   if (Serial.available() > 0) {
@@ -118,7 +117,7 @@ void loop() {
 
     // Convert the strings to appropriate types
     tempInput = input_arr[0].toFloat();
-    phInput = input_arr[1].toFloat();
+    phInput = input_arr[1].toInt();
     stirRPM = input_arr[2].toInt();
     antifoamInput = input_arr[3].toInt();
     airRpmInput = input_arr[4].toInt();
@@ -138,7 +137,7 @@ void loop() {
     // communicate about process start
     if (isRunning == 1) {
       // Start the process
-      commentOutput+="Process running ";
+      Serial.println("Process started");
       cycleStartTime = millis();
 
 
@@ -150,9 +149,8 @@ void loop() {
       cycleEndTime = millis();
       totalCycleTime = totalCycleTime + (cycleEndTime - cycleStartTime);
      
-      commentOutput += "Process paused total Cycle time:";
-      commentOutput += totalCycleTime;
-      
+      Serial.println("Process paused, total cycle time:");
+      Serial.println(totalCycleTime);
     }
 
 
@@ -234,8 +232,8 @@ sampleSignal = 4;
      
 //============================================
 
-      //time = millis();
-      //Serial.println(time);    
+      time = millis();
+      Serial.println(time);    
       delay(3000);
 
      // arduino output to rasbery
@@ -249,17 +247,14 @@ sampleSignal = 4;
     Serial.print(",");
     Serial.print(phValueOutput);
     Serial.print(",");
-    Serial.print(o2ValueOutput);
-    Serial.print(",");
     Serial.print(antifoamOutput);
     Serial.print(",");
+      delay(1000);
     Serial.print(stirRPM);
-    Serial.print(",");
-    Serial.print(airRpmInput);
     Serial.print(",");
     Serial.print(sampleSignal);
     Serial.print(",");
-    Serial.print(isRunning);
+    Serial.print(airRpmInput);
     Serial.print(",");
     Serial.println(commentOutput);
     
