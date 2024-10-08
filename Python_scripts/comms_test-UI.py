@@ -23,7 +23,7 @@ class MockArduino:
     def write(self, data):
         print(f"Mock write to Arduino: {data}")
 # real arduino 
-arduino = serial.Serial(port='COM10', baudrate=115200, timeout=.1) # Windows
+arduino = serial.Serial(port='COM11', baudrate=115200, timeout=.1) # Windows
 
 # DataFrame columns
 columns_out = ["total_cycle_time", "temp_inside", "temp_outside", "pH", "O2", "antifoam", "stirr_rpm", "air_RPM", "sample_signal", "running_signal", "Comment"]
@@ -84,7 +84,7 @@ def write_to_arduino(temp, pH, Stirr_RPM, antifoam, air_RPM, running_signal, sam
 def control_loop():
     global stop_signal_user, sample_signal_user
     cycle_start_time = time.time()
-    total_cycle_time = 60  # Example total cycle time in seconds
+    total_cycle_time = 100  # Example total cycle time in seconds
 
     while True:
         current_time = time.time()

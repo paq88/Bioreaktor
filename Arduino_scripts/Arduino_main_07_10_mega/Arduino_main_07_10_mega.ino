@@ -185,9 +185,9 @@ void loop() {
 
 
     //Temperature measurement and update 
-     //tempSensorsOneWire.requestTemperatures();
-     //tempInsideOutput = tempSensorsOneWire.getTempC(tempInsideSensorAdress);
-     //tempOutsideOutput = tempSensorsOneWire.getTempC(tempOutsideSensorAdress);
+     tempSensorsOneWire.requestTemperatures();
+     tempInsideOutput = tempSensorsOneWire.getTempC(tempInsideSensorAdress);
+     tempOutsideOutput = tempSensorsOneWire.getTempC(tempOutsideSensorAdress);
     //Place for PH measurement and update 
 
     // Place for O2 sensor measurement and update 
@@ -203,7 +203,7 @@ void loop() {
 
 
 tempOutsideOutput = 25;
-tempInput = 36; 
+//tempInput = 30; 
      
 
      if(tempOutsideOutput >= tempInput){
@@ -278,6 +278,7 @@ sampleSignal = 4;
 
 
     } else if (isRunning == 0) {
+      Serial.println("is Running == 0");
       //NOTHING
    
     }
