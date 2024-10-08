@@ -2,13 +2,6 @@
 #include "OneWire.h"
 #include "DallasTemperature.h"
 
-// onboard screen
-#include "ArduinoGraphics.h"
-#include "Arduino_LED_Matrix.h"
-ArduinoLEDMatrix matrix;
-//
-
-
 
 
 
@@ -72,10 +65,7 @@ byte tempOutsideSensorAdress[8] = {0x28, 0x9C, 0xE4, 0x43, 0xD4, 0xE1, 0x3C, 0x5
 
 
 void setup() {
-  // Onboard screen
-  matrix.begin();
-  //
-
+ 
 
   Serial.begin(115200);
 
@@ -106,31 +96,7 @@ void setup() {
   pinMode(antifoam, OUTPUT);
   
 }
-// onboard screen
-void ON(){
-  matrix.beginDraw();
-  matrix.stroke(0xFFFFFFFF);
-  const char text[] = "ON";
-  matrix.textFont(Font_4x6);
-  matrix.beginText(0, 1, 0xFFFFFF);
-  matrix.println(text);
-  matrix.endText();
-  matrix.endDraw();
 
-}
-
-void OFF(){
-  matrix.beginDraw();
-  matrix.stroke(0xFFFFFFFF);
-  const char text[] = "OFF";
-  matrix.textFont(Font_4x6);
-  matrix.beginText(0, 1, 0xFFFFFF);
-  matrix.println(text);
-  matrix.endText();
-  matrix.endDraw();
-
-}
-//
 
 
 
@@ -214,7 +180,7 @@ void loop() {
     // ================================================ MAIN LOOP IF isRunning =============================
     if (isRunning == 1) {
       // WHOLE RUNNING CODE
-    ON();
+    
 
 
 
@@ -313,7 +279,7 @@ sampleSignal = 4;
 
     } else if (isRunning == 0) {
       //NOTHING
-      OFF();
+   
     }
  
 

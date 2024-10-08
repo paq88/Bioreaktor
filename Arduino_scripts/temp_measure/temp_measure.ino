@@ -32,7 +32,7 @@ void loop() {
   float tempC = sensors.getTempCByIndex(0);
 
   Serial.print("temp C:");
-  Serial.print(millis());
+  //Serial.print(millis());
   Serial.print(" ");
   Serial.println(tempC);
 
