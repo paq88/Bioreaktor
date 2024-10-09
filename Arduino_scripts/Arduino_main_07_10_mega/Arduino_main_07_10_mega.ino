@@ -191,7 +191,8 @@ void loop() {
     //Place for PH measurement and update 
 
     // Place for O2 sensor measurement and update 
-
+    //digitalWrite(probePumpSuck, LOW);
+   // digitalWrite(probePump, HIGH);
 
     
      // engineStartStop(airPump, 255);
