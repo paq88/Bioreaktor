@@ -7,7 +7,7 @@
 
 
 // Define to which pin of the Arduino the 1-Wire bus is connected:
-#define ONE_WIRE_BUS 2
+#define ONE_WIRE_BUS 22
 
 // Create a new instance of the oneWire class to communicate with any OneWire device:
 OneWire oneWire(ONE_WIRE_BUS);
@@ -29,13 +29,20 @@ void loop() {
 
 
   sensors.requestTemperatures();
-  float tempC = sensors.getTempCByIndex(0);
+  float tempC1 = sensors.getTempCByIndex(0);
+  float tempC2 = sensors.getTempCByIndex(1);
+  float tempC3 = sensors.getTempCByIndex(2);
+
+
 
   Serial.print("temp C:");
   //Serial.print(millis());
   Serial.print(" ");
-  Serial.println(tempC);
-
+  Serial.print(tempC1);
+  Serial.print(" ");
+  Serial.print(tempC2);
+  Serial.print(" ");
+  Serial.println(tempC3);
   delay(3000);
 
 }
