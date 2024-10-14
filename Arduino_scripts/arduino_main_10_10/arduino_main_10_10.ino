@@ -35,17 +35,28 @@ unsigned long int totalCycleTime = 0;
 #define free1 1
 
 #define airPump 2
-#define pwmProbePump  3
+#define pwmAirPump 3
+
 #define waterPump 4
+
+
 #define pwmAntifoam 5
-#define pwmAirPump 6
-#define Stirrer 7
-#define probePumpSuck 8 
-#define pwmAcidPump2 9
-#define pwmRulePump1 10
-#define pwmStirrer 11 // speed of Stirrer (mieszadlo)
-#define acidPump2 12 // peristalticPump 2
-#define rulePump1 13 // peristalticPump 1
+#define antifoam 6
+
+#define pwmProbePump  7
+#define probePump 8
+#define probePumpSuck 9 
+
+
+
+#define pwmAcidPump2 10
+#define pwmRulePump1 11
+#define pwmStirrer 12 // speed of Stirrer (mieszadlo)
+#define free13 13 // freee pwm
+
+#define Stirrer 14
+#define acidPump2 15 // peristalticPump 2
+#define rulePump1 16 // peristalticPump 1
 
 #define phSensor A1 //ph Sensor 15 pin analog
 #define o2Sensor A2 // o2 sensor 16 pin analog
@@ -53,10 +64,10 @@ unsigned long int totalCycleTime = 0;
 
 
 
-#define tempSensors 22 // both temperature sensors digital 
-#define probePump 23
-#define antifoam 24
-#define heaterRelay 25 // heater relay digital 
+#define tempSensors 52 // both temperature sensors digital 
+
+
+#define heaterRelay 53 // heater relay digital 
 
 OneWire oneWire(tempSensors);
 DallasTemperature tempSensorsOneWire(&oneWire);
@@ -102,7 +113,7 @@ void setup() {
   commentOutput = "test_comment";
   tempInput = 30.0;
   phInput = 7.0;
-  stirRPM = 255; // send in PWM 
+  stirRPM = 0; // send in PWM 
   antifoamInput = 0;
   isRunning = 1;
   sampleSignal = 3; // 3 off
@@ -188,7 +199,7 @@ void loop() {
       //digitalWrite(Stirrer, HIGH);
       //digitalWrite(Stirrer, HIGH);
       //digitalWrite(airPump, HIGH);
-      digitalWrite(waterPump, HIGH);
+      digitalWrite(4, HIGH);
       
       engineStartStop(airPump, airRpmInput);
       engineStartStop(Stirrer, stirRPM);
