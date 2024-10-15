@@ -98,7 +98,7 @@ class MyFrame(wx.Frame):
         vbox.Add(notebook, 1, flag=wx.EXPAND | wx.ALL, border=10)
         vbox.Add(self.last_values_checkbox, flag=wx.ALL, border=10)
         vbox.Add(self.save_values_button, flag=wx.ALL, border=10)
-        panel.SetSizer(vbox)
+        
 
         #Okno
         self.SetTitle("Bioreaktor GUI")
