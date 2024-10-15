@@ -2,6 +2,8 @@ import wx
 import os
 import time
 import pandas as pd
+import requests
+from io import BytesIO
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 
@@ -12,6 +14,13 @@ class MyFrame(wx.Frame):
         panel = wx.Panel(self)
         vbox = wx.BoxSizer(wx.VERTICAL)
         notebook = wx.Notebook(panel)
+
+        image_urls = [
+            "https://github.com/paq88/Bioreaktor/raw/main/Testy_gui/logoo.png",
+            "https://github.com/paq88/Bioreaktor/raw/main/Testy_gui/logobioadd.png",
+            "https://github.com/paq88/Bioreaktor/raw/main/Testy_gui/logobinf.png"
+        ]
+
         #Zakładki
         main_tab = wx.Panel(notebook)
         second_tab = wx.Panel(notebook)
@@ -165,6 +174,36 @@ class MyFrame(wx.Frame):
         six_vbox.Add(self.load_rpm_button, flag=wx.ALL | wx.CENTER, border=5)
         six_vbox.Add(self.canvas_rpm, 1, flag=wx.EXPAND | wx.ALL)
         six_tab.SetSizer(six_vbox)
+
+        
+        # Dodawanie obrazów do panelu w układzie poziomym
+        hbox_images = wx.BoxSizer(wx.HORIZONTAL)  
+
+        for url in image_urls:
+            image = self.load_image_from_url(url)
+            if image:
+                bitmap = wx.StaticBitmap(panel, -1, image)
+                hbox_images.Add(bitmap, flag=wx.ALL, border=10)
+
+        vbox.Add(hbox_images, flag=wx.ALIGN_RIGHT | wx.ALL, border=10)
+
+        # Ustawienie layoutu i okna
+        panel.SetSizer(vbox)
+        self.SetTitle("Bioreaktor GUI")
+        self.SetSize((1500, 850))
+        self.Centre()
+
+    def load_image_from_url(self, url):
+        try:
+            response = requests.get(url)
+            response.raise_for_status()  # Sprawdzamy, czy pobieranie się powiodło
+            image_data = BytesIO(response.content)
+            image = wx.Image(image_data).Scale(125, 125, wx.IMAGE_QUALITY_HIGH)  # Skaluje obraz
+            return wx.Bitmap(image)
+        except requests.RequestException as e:
+            wx.MessageBox(f"Nie udało się pobrać obrazu: {e}", "Błąd", wx.OK | wx.ICON_ERROR)
+            return None
+
 
 
     def change_value(self, event, label, direction):
