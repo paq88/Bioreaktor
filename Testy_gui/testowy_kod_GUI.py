@@ -1,6 +1,7 @@
 import wx
 import os
 import time
+import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 
@@ -117,6 +118,55 @@ class MyFrame(wx.Frame):
         second_vbox.Add(self.canvas, 1, flag=wx.EXPAND | wx.ALL)
         second_tab.SetSizer(second_vbox)
 
+        # Layout dla zakładki Temp inside
+        self.load_temp_inside_button = wx.Button(third_tab, label="Load Temp Inside Data")
+        self.load_temp_inside_button.Bind(wx.EVT_BUTTON, self.load_temp_inside_data)
+
+        self.figure_temp_inside, self.ax_temp_inside = plt.subplots()
+        self.canvas_temp_inside = FigureCanvas(third_tab, -1, self.figure_temp_inside)
+
+        third_vbox = wx.BoxSizer(wx.VERTICAL)
+        third_vbox.Add(self.load_temp_inside_button, flag=wx.ALL | wx.CENTER, border=5)
+        third_vbox.Add(self.canvas_temp_inside, 1, flag=wx.EXPAND | wx.ALL)
+        third_tab.SetSizer(third_vbox)
+
+        # Layout dla zakładki pH
+        self.load_ph_button = wx.Button(fourth_tab, label="Load PH Data")
+        self.load_ph_button.Bind(wx.EVT_BUTTON, self.load_ph_data)
+
+        self.figure_ph, self.ax_ph = plt.subplots()
+        self.canvas_ph = FigureCanvas(fourth_tab, -1, self.figure_ph)
+
+        fourth_vbox = wx.BoxSizer(wx.VERTICAL)
+        fourth_vbox.Add(self.load_ph_button, flag=wx.ALL | wx.CENTER, border=5)
+        fourth_vbox.Add(self.canvas_ph, 1, flag=wx.EXPAND | wx.ALL)
+        fourth_tab.SetSizer(fourth_vbox)
+
+        # Layout dla zakładki OXYGEN
+        self.load_oxygen_button = wx.Button(fifth_tab, label="Load OXYGEN Data")
+        self.load_oxygen_button.Bind(wx.EVT_BUTTON, self.load_oxygen_data)
+
+        self.figure_oxygen, self.ax_oxygen = plt.subplots()
+        self.canvas_oxygen = FigureCanvas(fifth_tab, -1, self.figure_oxygen)
+
+        fifth_vbox = wx.BoxSizer(wx.VERTICAL)
+        fifth_vbox.Add(self.load_oxygen_button, flag=wx.ALL | wx.CENTER, border=5)
+        fifth_vbox.Add(self.canvas_oxygen, 1, flag=wx.EXPAND | wx.ALL)
+        fifth_tab.SetSizer(fifth_vbox)
+
+        # Layout dla zakładki RPM
+        self.load_rpm_button = wx.Button(six_tab, label="Load RPM Data")
+        self.load_rpm_button.Bind(wx.EVT_BUTTON, self.load_rpm_data)
+
+        self.figure_rpm, self.ax_rpm = plt.subplots()
+        self.canvas_rpm = FigureCanvas(six_tab, -1, self.figure_rpm)
+
+        six_vbox = wx.BoxSizer(wx.VERTICAL)
+        six_vbox.Add(self.load_rpm_button, flag=wx.ALL | wx.CENTER, border=5)
+        six_vbox.Add(self.canvas_rpm, 1, flag=wx.EXPAND | wx.ALL)
+        six_tab.SetSizer(six_vbox)
+
+
     def change_value(self, event, label, direction):
         """Zmiana wartości w polu tekstowym o zadany krok."""
         cfg = self.config[label]
@@ -198,13 +248,12 @@ class MyFrame(wx.Frame):
     def plot_temperature_data(self, path):
         """Rysuje dane temperatury z wybranego pliku."""
         try:
-            data = []
-            with open(path, 'r') as file:
-                for line in file:
-                    data.append(float(line.strip()))
+            df = pd.read_csv(path)
+            temp_outside_data = df['temp_outside']
+
             #Czyszczenie obecnego wykresu
             self.ax.clear()
-            self.ax.plot(data, label='Temperatura', color='b')
+            self.ax.plot(temp_outside_data, label='Temperatura', color='b')
             self.ax.set_title('Temperatura na zewnątrz')
             self.ax.set_xlabel('Czas')
             self.ax.set_ylabel('Temperatura (°C)')
@@ -213,6 +262,99 @@ class MyFrame(wx.Frame):
             wx.MessageBox("Dane temperatury załadowane i narysowane.", "Sukces", wx.OK | wx.ICON_INFORMATION)
         except Exception as e:
             wx.MessageBox(f"Błąd ładowania danych: {str(e)}", "Błąd", wx.OK | wx.ICON_ERROR)
+
+    def load_temp_inside_data(self, event):
+        with wx.FileDialog(self, "Otwórz plik CSV", wildcard="CSV files (*.csv)|*.csv",
+                        style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as file_dialog:
+            if file_dialog.ShowModal() == wx.ID_OK:
+                path = file_dialog.GetPath()
+                self.plot_temp_inside_data(path)
+
+    def plot_temp_inside_data(self, path):
+        try:
+            df = pd.read_csv(path)
+            temp_inside_data = df['temp_inside']
+
+            self.ax_temp_inside.clear()
+            self.ax_temp_inside.plot(temp_inside_data, label='Temperatura wewnątrz', color='g')
+            self.ax_temp_inside.set_title('Temperatura wewnątrz')
+            self.ax_temp_inside.set_xlabel('Czas')
+            self.ax_temp_inside.set_ylabel('Temperatura (°C)')
+            self.ax_temp_inside.legend()
+            self.canvas_temp_inside.draw()
+            wx.MessageBox("Dane temperatury wewnętrznej załadowane i narysowane.", "Sukces", wx.OK | wx.ICON_INFORMATION)
+        except Exception as e:
+            wx.MessageBox(f"Błąd ładowania danych: {str(e)}", "Błąd", wx.OK | wx.ICON_ERROR)
+
+    def load_ph_data(self, event):
+        with wx.FileDialog(self, "Otwórz plik CSV", wildcard="CSV files (*.csv)|*.csv",
+                        style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as file_dialog:
+            if file_dialog.ShowModal() == wx.ID_OK:
+                path = file_dialog.GetPath()
+                self.plot_ph_data(path)
+
+    def plot_ph_data(self, path):
+        try:
+            df = pd.read_csv(path)
+            ph_data = df['pH']
+
+            self.ax_ph.clear()
+            self.ax_ph.plot(ph_data, label='pH', color='r')
+            self.ax_ph.set_title('pH')
+            self.ax_ph.set_xlabel('Czas')
+            self.ax_ph.set_ylabel('pH')
+            self.ax_ph.legend()
+            self.canvas_ph.draw()
+            wx.MessageBox("Dane pH załadowane i narysowane.", "Sukces", wx.OK | wx.ICON_INFORMATION)
+        except Exception as e:
+            wx.MessageBox(f"Błąd ładowania danych: {str(e)}", "Błąd", wx.OK | wx.ICON_ERROR)
+
+    def load_oxygen_data(self, event):
+        with wx.FileDialog(self, "Otwórz plik CSV", wildcard="CSV files (*.csv)|*.csv",
+                        style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as file_dialog:
+            if file_dialog.ShowModal() == wx.ID_OK:
+                path = file_dialog.GetPath()
+                self.plot_oxygen_data(path)
+
+    def plot_oxygen_data(self, path):
+        try:
+            df = pd.read_csv(path)
+            oxygen_data = df['OXYGEN']
+
+            self.ax_oxygen.clear()
+            self.ax_oxygen.plot(oxygen_data, label='Tlen', color='c')
+            self.ax_oxygen.set_title('Tlen')
+            self.ax_oxygen.set_xlabel('Czas')
+            self.ax_oxygen.set_ylabel('Stężenie tlenu (%)')
+            self.ax_oxygen.legend()
+            self.canvas_oxygen.draw()
+            wx.MessageBox("Dane stężenia tlenu załadowane i narysowane.", "Sukces", wx.OK | wx.ICON_INFORMATION)
+        except Exception as e:
+            wx.MessageBox(f"Błąd ładowania danych: {str(e)}", "Błąd", wx.OK | wx.ICON_ERROR)
+
+    def load_rpm_data(self, event):
+        with wx.FileDialog(self, "Otwórz plik CSV", wildcard="CSV files (*.csv)|*.csv",
+                        style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as file_dialog:
+            if file_dialog.ShowModal() == wx.ID_OK:
+                path = file_dialog.GetPath()
+                self.plot_rpm_data(path)
+
+    def plot_rpm_data(self, path):
+        try:
+            df = pd.read_csv(path)
+            rpm_data = df['RPM']
+
+            self.ax_rpm.clear()
+            self.ax_rpm.plot(rpm_data, label='RPM', color='m')
+            self.ax_rpm.set_title('RPM')
+            self.ax_rpm.set_xlabel('Czas')
+            self.ax_rpm.set_ylabel('Obroty na minutę (RPM)')
+            self.ax_rpm.legend()
+            self.canvas_rpm.draw()
+            wx.MessageBox("Dane RPM załadowane i narysowane.", "Sukces", wx.OK | wx.ICON_INFORMATION)
+        except Exception as e:
+            wx.MessageBox(f"Błąd ładowania danych: {str(e)}", "Błąd", wx.OK | wx.ICON_ERROR)
+
 
 class MyApp(wx.App):
     def OnInit(self):
