@@ -9,7 +9,7 @@ int isRunning = 0;
 float tempInput; // Temperature we want
 float tempInsideOutput; // Temperature we have inside
 float tempOutsideOutput; // Temperature we have outside
-float phInput; // pH we want
+int phInputSignal; // signal to add alkali/acid  --- 0 - nothing, 1-add drop of acid 2- add drop of alkali 
 float phValueOutput; // pH we have
 float o2ValueOutput;
 int oxygenInput;
@@ -112,7 +112,7 @@ void setup() {
   sampleSignal = 0;
   commentOutput = "test_comment";
   tempInput = 30.0;
-  phInput = 7.0;
+  phInputSignal = 0; 
   stirRPM = 0; // send in PWM 
   antifoamInput = 0;
   isRunning = 1;
@@ -148,7 +148,7 @@ void loop() {
 
     // Convert the strings to appropriate types
     tempInput = input_arr[0].toFloat();
-    phInput = input_arr[1].toFloat();
+    phInputSignal = input_arr[1].toInt(); // ph input is now signal to add one drop of alkali/acid
     stirRPM = input_arr[2].toInt();
     antifoamInput = input_arr[3].toInt();
     airRpmInput = input_arr[4].toInt();
@@ -165,7 +165,8 @@ void loop() {
     if (isRunning == 1) {
       // Start the process
       commentOutput+="Process running ";
-      cycleStartTime = millis();
+      if(totalCycleTime ==0 ){cycleStartTime = millis();}
+      
 
 
     } else if (isRunning == 0) {
@@ -199,8 +200,9 @@ void loop() {
       //digitalWrite(Stirrer, HIGH);
       //digitalWrite(Stirrer, HIGH);
       //digitalWrite(airPump, HIGH);
-      digitalWrite(4, HIGH);
-      
+      digitalWrite(waterPump, HIGH);
+      //pwmAntifoam = 255;
+      engineStartStop(antifoam, 255);
       engineStartStop(airPump, airRpmInput);
       engineStartStop(Stirrer, stirRPM);
 
@@ -301,6 +303,7 @@ void loop() {
 
     } else if (isRunning == 0) {
       Serial.println("is Running == 0");
+      delay(3000);
       //NOTHING
    
     }
