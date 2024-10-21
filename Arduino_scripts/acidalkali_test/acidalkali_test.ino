@@ -9,13 +9,7 @@ int isRunning = 0;
 float tempInput; // Temperature we want
 float tempInsideOutput; // Temperature we have inside
 float tempOutsideOutput; // Temperature we have outside
-float phInput; // pH we want
-
-
-float phNapiecieElektryczneBoMichalSieZesra;
-
-
-
+int phInputSignal; // signal to add alkali/acid  --- 0 - nothing, 1-add drop of acid 2- add drop of alkali 
 float phValueOutput; // pH we have
 float o2ValueOutput;
 int oxygenInput;
@@ -75,19 +69,14 @@ unsigned long int totalCycleTime = 0;
 
 #define heaterRelay 53 // heater relay digital 
 
-OneWire oneWire(tempSensors);
-DallasTemperature tempSensorsOneWire(&oneWire);
-//byte tempInsideSensorAdress[8] = {0x28, 0x18, 0x12, 0x43, 0xD4, 0xE1, 0x3C, 0x58}; // ten z kablami 
-byte tempOutsideSensorAdress[8] = {0x28, 0x9C, 0xE4, 0x43, 0xD4, 0xE1, 0x3C, 0x54}; // trytytka 
-byte tempInsideSensorAdress[8] = {0x28, 0x55, 0xDC, 0x43, 0xD4, 0xE1, 0x3C, 0xE7}; // ten z izolacja
+
 
 void setup() {
  
 
   Serial.begin(115200);
 
-  tempSensorsOneWire.begin();
-  tempSensorsOneWire.setResolution(12);
+
   pinMode(airPump, OUTPUT);    
   pinMode(pwmProbePump, OUTPUT);
   pinMode(waterPump, OUTPUT);
@@ -118,40 +107,138 @@ void setup() {
   sampleSignal = 0;
   commentOutput = "test_comment";
   tempInput = 30.0;
-  phInput = 7.0;
+  phInputSignal = 0; 
   stirRPM = 0; // send in PWM 
   antifoamInput = 0;
   isRunning = 1;
   sampleSignal = 3; // 3 off
   stopSignal = 0;
-  airRpmInput = 255;
+  airRpmInput = 0;
 
 }
 
 
   
+
 
 
 
 void loop() {
+ 
   
-  //Serial.println(phNapiecieElektryczneBoMichalSieZesra);
- //
- // phNapiecieElektryczneBoMichalSieZesra = analogRead(phSensor) * 0.0049;
+  
+  
+  
+  //=========================================== INPUT READ ==================================================
+  if (Serial.available() > 0) {
+    // Read the input from the serial port until a newline character is encountered
+    String input = Serial.readStringUntil('\n');
+    input.trim(); // Remove any trailing newline characters
 
-  //phValueOutput =  3.4468*phNapiecieElektryczneBoMichalSieZesra + 0.9253;
 
-  phValueOutput = analogRead(o2Sensor); 
-  //Serial.println(phNapiecieElektryczneBoMichalSieZesra);
-  engineStartStop(airPump, 255); 
+    int count = 0;
+    // Split the string
+    String* input_arr = splitString(input, ',', count);
 
 
-  Serial.println(phValueOutput);
+    // Convert the strings to appropriate types
+    tempInput = input_arr[0].toFloat();
+    phInputSignal = input_arr[1].toInt(); // ph input is now signal to add one drop of alkali/acid
+    stirRPM = input_arr[2].toInt();
+    antifoamInput = input_arr[3].toInt();
+    airRpmInput = input_arr[4].toInt();
+    isRunning = input_arr[5].toInt();
+    sampleSignal = input_arr[6].toInt();
+    stopSignal = input_arr[7].toInt();
 
-  delay(1000);
+
+    // Free the allocated memory
+    delete[] input_arr;
+
+  }
+  
+
+
+//=======================acid/alkali=============
+
+phInputSignal = 1;
+
+
+
+if(phInputSignal == 0){}
+else if (phInputSignal == 1){ //drop of acid (around 2.85 seconds to make a drop)
+
+engineStartStop(acidPump2, 255);
+delay(2900);
+engineStartStop(acidPump2, 0);
+delay(3000);
 
 
 }
+else if (phInputSignal == 2 ) { //drop  of alkali 
+
+digitalWrite(acidPump2,HIGH);
+
+}
+
+
+
+//====================== SAMPLE ================
+//sampleSignal = 0;
+    if(sampleSignal == 0){
+      }
+               
+     else if (sampleSignal == 1){
+      digitalWrite(probePump, HIGH); //23
+      digitalWrite(probePumpSuck, LOW); //8
+      analogWrite(pwmProbePump, 255); // 3 
+      commentOutput += "Sample taking in progress";
+        
+      }
+     else if(sampleSignal == 2){
+      digitalWrite(probePump, LOW);
+      digitalWrite(probePumpSuck, HIGH);
+      analogWrite(pwmProbePump, 255); 
+      commentOutput+="Sample taken returning remains";
+      }
+     else if (sampleSignal == 3){
+      digitalWrite(probePump, LOW);
+      digitalWrite(probePumpSuck, LOW);
+      analogWrite(pwmProbePump, 0); 
+      commentOutput+="Process of sampling ended";
+      }
+     
+
+}
+
+//============================= Functions ==============================
+
+
+String* splitString(const String &str, char delimiter, int &count) {
+  count = 1; // At least one substring exists
+  for (int i = 0; i < str.length(); i++) {
+    if (str[i] == delimiter) {
+      count++;
+    }
+  }
+
+
+  String* result = new String[count];
+  int startIndex = 0;
+  int resultIndex = 0;
+
+
+  for (int i = 0; i <= str.length(); i++) {
+    if (str[i] == delimiter || i == str.length()) {
+      result[resultIndex++] = str.substring(startIndex, i);
+      startIndex = i + 1;
+    }
+  }
+
+
+  return result;
+}
+
 
 void engineStartStop(byte enginePin, byte PWM){
 byte pwmPin;
@@ -186,5 +273,3 @@ switch (eng){
     }
 
      }
-
-
