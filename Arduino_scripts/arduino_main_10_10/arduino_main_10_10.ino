@@ -237,6 +237,23 @@ void loop() {
       digitalWrite (heaterRelay, LOW) ; // LOW MEANS HEATER IS ON!!! 
         }
 
+//=======================acid/alkali=============
+
+if(phInputSignal == 0){}
+else if (phInputSignal == 1){ //drop of acid
+
+engineStartStop(acidPump2, 255);
+delay(3000);
+engineStartStop(acidPump2, 0);
+
+
+}
+else if (phInputSignal == 2 ) { //drop  of alkali 
+
+digitalWrite(acidPump2,HIGH);
+
+}
+
 
 
 //====================== SAMPLE ================
