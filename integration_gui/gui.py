@@ -8,7 +8,7 @@ import requests
 from io import BytesIO
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
-from comms import start_read_thread, write_thread, stop_write_thread, update_params, pause_write_thread, resume_write_thread, start_session
+from comms import start_read_thread, write_thread, stop_write_thread, update_params, pause_write_thread, resume_write_thread, start_session, send_sample_signals, send_antifoam_signal
 
 
 class MyFrame(wx.Frame):
@@ -22,13 +22,15 @@ class MyFrame(wx.Frame):
 
         #Zakładki
         main_tab = wx.Panel(notebook)
+        readings = wx.Panel(notebook)
         second_tab = wx.Panel(notebook)
         third_tab = wx.Panel(notebook)
         fourth_tab = wx.Panel(notebook)
         fifth_tab = wx.Panel(notebook)
         six_tab = wx.Panel(notebook)
         seven_tab = wx.Panel(notebook)
-        notebook.AddPage(main_tab, "Main")
+        notebook.AddPage(main_tab, "Controls")
+        notebook.AddPage(readings, "Readings")
         notebook.AddPage(second_tab, "Temp outside")
         notebook.AddPage(third_tab, "Temp inside")
         notebook.AddPage(fourth_tab, "PH")
@@ -37,33 +39,74 @@ class MyFrame(wx.Frame):
         notebook.AddPage(seven_tab, "Event Plot")
         
         #Layout głównej zakładki
-        grid = wx.FlexGridSizer(0, 4, 10, 10)
+        grid_main = wx.FlexGridSizer(9, 4, 10, 10)
         self.config = {
             'Temp': {'min': 0, 'max': 100, 'step': 1},
             'pH': {'min': 0, 'max': 14, 'step': 0.1},
             'Stirr. RPM': {'min': 0, 'max': 1000, 'step': 1},
-            'Antifoam': {'min': 0, 'max': 255, 'step': 1},
-            'Air RPM': {'min': 0, 'max': 255, 'step': 1},
-            'Sample Signal': {'min': 0, 'max': 2, 'step': 1},
+            'Air RPM': {'min': 0, 'max': 255, 'step': 1}
         }
+        
+        self.readings_params = {'Temp. inside' : {0},
+                                'Temp. outside': {0},
+                                'pH': {0},
+                                'Stirr. RPM': {0},
+                                'Air RPM': {0}
+        }
+
 
         self.text_controls = {}
         for label, cfg in self.config.items():
-            lbl = wx.StaticText(main_tab, label=label)
-            grid.Add(lbl, flag=wx.ALIGN_CENTER)
+            if label == "Stirr. RPM":
+                lbl = wx.StaticText(main_tab, label=label)
+                grid_main.Add(lbl, flag=wx.ALIGN_CENTER)
 
-            txt = wx.TextCtrl(main_tab, value=str(0))
-            grid.Add(txt, flag=wx.EXPAND)
-            self.text_controls[label] = txt
+                stir_rpm_choices = [400, 800, 1200, 1600, 2000]
+                self.stir_rpm_choice = wx.Choice(main_tab, choices=[str(x) for x in stir_rpm_choices])
+                self.stir_rpm_choice.SetSelection(0)
+                grid_main.Add(self.stir_rpm_choice, flag=wx.EXPAND)
 
-            up_button = wx.Button(main_tab, label="▲")
-            down_button = wx.Button(main_tab, label="▼")
-            grid.Add(up_button)
-            grid.Add(down_button)
+                self.stir_rpm_choice.Bind(wx.EVT_CHOICE, self.stir_on_rpm_choice)
+                
+            elif label == 'Air RPM':
+                lbl = wx.StaticText(main_tab, label=label)
+                grid_main.Add(lbl, flag=wx.ALIGN_CENTER)
 
-            up_button.Bind(wx.EVT_BUTTON, lambda evt, lbl=label: self.change_value(evt, lbl, 1))
-            down_button.Bind(wx.EVT_BUTTON, lambda evt, lbl=label: self.change_value(evt, lbl, -1))
+                air_rpm_choices = [400, 800, 1200, 1600, 2000]
+                self.air_rpm_choice = wx.Choice(main_tab, choices=[str(x) for x in air_rpm_choices])
+                self.air_rpm_choice.SetSelection(0)
+                grid_main.Add(self.air_rpm_choice, flag=wx.EXPAND)
 
+                self.air_rpm_choice.Bind(wx.EVT_CHOICE, self.air_on_rpm_choice)
+
+            else:
+                lbl = wx.StaticText(main_tab, label=label)
+                grid_main.Add(lbl, flag=wx.ALIGN_CENTER)
+
+                txt = wx.TextCtrl(main_tab, value=str(0))
+                grid_main.Add(txt, flag=wx.EXPAND)
+                self.text_controls[label] = txt
+
+                up_button = wx.Button(main_tab, label="▲")
+                down_button = wx.Button(main_tab, label="▼")
+                grid_main.Add(up_button)
+                grid_main.Add(down_button)
+
+                up_button.Bind(wx.EVT_BUTTON, lambda evt, lbl=label: self.change_value(evt, lbl, 1))
+                down_button.Bind(wx.EVT_BUTTON, lambda evt, lbl=label: self.change_value(evt, lbl, -1))
+
+        grid_readings = wx.FlexGridSizer(6, 2, 10, 10)
+        self.text_readings = {}
+        for label, cfg in self.readings_params.items():
+            lbl = wx.StaticText(readings, label=label)
+            grid_readings.Add(lbl, flag=wx.ALIGN_CENTER)
+            
+            txt = wx.TextCtrl(readings, value=str(0))
+            grid_readings.Add(txt, flag=wx.EXPAND)
+            self.readings_params[label] = txt
+    
+        readings.SetSizer(grid_readings)
+        
         #Stoper
         self.start_time = 0
         self.paused_time = 0
@@ -71,7 +114,7 @@ class MyFrame(wx.Frame):
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.update_timer, self.timer)
 
-        main_tab.SetSizer(grid)
+        main_tab.SetSizer(grid_main)
 
         #Pole tekstowe dla licznika
         self.timer_box = wx.TextCtrl(panel, style=wx.TE_READONLY | wx.TE_CENTER)
@@ -103,15 +146,19 @@ class MyFrame(wx.Frame):
         self.SetSize((600, 400))
         self.Centre()
 
+        #Antifoam and Draw Sample buttons
         self.antifoam = wx.Button(main_tab, label="Anti Foam", size=(120,25))
         self.drawsample = wx.Button(main_tab, label="Draw Sample", size=(120,25))
-        grid.Add(self.antifoam, flag=wx.ALIGN_CENTER)
-        grid.Add(self.drawsample, flag=wx.ALIGN_CENTER)
+        grid_main.Add(self.antifoam, flag=wx.ALIGN_CENTER)
+        grid_main.Add(self.drawsample, flag=wx.ALIGN_CENTER)
+        
         #Przyciski Running Signal i Stop Signal
+        self.drawsample.Bind(wx.EVT_BUTTON, self.draw_sample)
+        self.antifoam.Bind(wx.EVT_BUTTON, self.antifoam_action)
         self.running_button = wx.Button(main_tab, label="Start", size=(120, 25))
         self.stop_button = wx.Button(main_tab, label="Stop", size=(120, 25))
-        grid.Add(self.running_button, flag=wx.ALIGN_CENTER)
-        grid.Add(self.stop_button, flag=wx.ALIGN_CENTER)
+        grid_main.Add(self.running_button, flag=wx.ALIGN_CENTER)
+        grid_main.Add(self.stop_button, flag=wx.ALIGN_CENTER)
         
         self.running_button.Bind(wx.EVT_BUTTON, self.on_start_pause)
         self.stop_button.Bind(wx.EVT_BUTTON, self.on_stop)
@@ -186,6 +233,18 @@ class MyFrame(wx.Frame):
         self.SetSize((1500, 850))
         self.Centre()
 
+    def stir_on_rpm_choice(self, event):
+        """Aktualizuje wartość Stirr. RPM na podstawie wyboru z listy rozwijanej."""
+        selected_value = int(self.stir_rpm_choice.GetString(self.stir_rpm_choice.GetSelection()))
+        self.text_controls['Stirr. RPM'] = selected_value
+        self.update_params_from_gui()
+        
+    def air_on_rpm_choice(self, event):
+        """Aktualizuje wartość Air RPM na podstawie wyboru z listy rozwijanej."""
+        selected_value = int(self.air_rpm_choice.GetString(self.air_rpm_choice.GetSelection()))
+        self.text_controls['Air RPM'] = selected_value
+        self.update_params_from_gui()
+
     def change_value(self, event, label, direction):
         """Change the value in the text field and update the global params."""
         cfg = self.config[label]
@@ -203,13 +262,12 @@ class MyFrame(wx.Frame):
         self.update_params_from_gui()
 
     def update_params_from_gui(self):
+        """Update global parameters which are then sent to Arduino"""
         params = {
             "temp": float(self.text_controls['Temp'].GetValue()),
             "pH": float(self.text_controls['pH'].GetValue()),
-            "Stirr_RPM": float(self.text_controls['Stirr. RPM'].GetValue()),
-            "antifoam": float(self.text_controls['Antifoam'].GetValue()),
-            "air_RPM": float(self.text_controls['Air RPM'].GetValue()),
-            "sample_signal": float(self.text_controls['Sample Signal'].GetValue())
+            "Stirr_RPM": int(self.stir_rpm_choice.GetString(self.stir_rpm_choice.GetSelection())),
+            "Air_RPM": int(self.air_rpm_choice.GetString(self.air_rpm_choice.GetSelection())),
         }
         update_params(params)
 
@@ -221,8 +279,11 @@ class MyFrame(wx.Frame):
         else:
             self.timer_box.SetValue(time.strftime('%H:%M:%S', time.gmtime(self.paused_time)))
     
-    def draw_sample(self,event):
-        ...
+    def draw_sample(self, event):
+        send_sample_signals()
+        
+    def antifoam_action(self, event):
+        send_antifoam_signal()
 
        
     def toggle_timer(self, event):
@@ -416,8 +477,11 @@ class MyFrame(wx.Frame):
         self.is_paused = True
 
     def update_gui_with_data(self, data):
-        wx.CallAfter(self.text_controls['Temp'].SetValue, str(data['temp_inside']))
-        wx.CallAfter(self.text_controls['pH'].SetValue, str(data['pH']))
+        wx.CallAfter(self.readings_params['Temp. inside'].SetValue, str(data['temp_inside']))
+        wx.CallAfter(self.readings_params['Temp. outside'].SetValue, str(data['temp_outside']))
+        wx.CallAfter(self.readings_params['pH'].SetValue, str(data['ph']))
+        wx.CallAfter(self.readings_params['Stirr. RPM'].SetValue, str(data['stirr_rpm']))
+        wx.CallAfter(self.readings_params['Air RPM'].SetValue, str(data['air_rpm']))
         
 
 
