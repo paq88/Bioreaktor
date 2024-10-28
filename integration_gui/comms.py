@@ -9,7 +9,7 @@ lock = threading.Lock()
 params = {}
 write_thread_instance = None
 session = None
-parent = "/tmp/"
+parent = "C:/Users/marek/Documents"
 
 
 # Initialize serial communication with the Arduino
@@ -18,7 +18,8 @@ parent = "/tmp/"
 #     def write(self, data):
 #         print(f"Mock write to Arduino: {data}")
         
-arduino = serial.Serial(port='/dev/ttyACM0', baudrate=115200, timeout=.1) # Linux
+#arduino = serial.Serial(port='/dev/ttyACM0', baudrate=115200, timeout=.1) # Linux
+arduino = serial.Serial(port='COM11', baudrate=115200, timeout=.1) # Linux
 
 
 # Function to send variables to the Arduino
@@ -39,10 +40,11 @@ def write_to_arduino(temp, pH, Stirr_RPM, antifoam, Air_RPM, running_signal, sam
 mock = 'mockArduino'
 out_cols = ['temp_inside', 'temp_outside','ph', 'stirr_rpm', 'air_rpm']
 def read_from_arduino(callback):
-    with open(mock, 'r') as f:
-        data = f.readline().strip()
-        data = data.split(',')
-        data_dict = dict(zip(out_cols, data))
+    if arduino.in_waiting:
+        data = arduino.readline().decode('utf-8').strip()
+        data_list = data.split(',')
+        data_dict = dict(zip(out_cols, data_list))
+        print(data_dict)
         callback(data_dict)
         
 # def read_from_arduino(callback=None):
@@ -120,7 +122,7 @@ def send_antifoam_signal():
         pause_write_thread()
         end_time = time.time() + 10
         while time.time() < end_time:
-            write_to_arduino(**params, antifoam=1, sample_signal=0, running_signal=1, stop_signal=0)
+            write_to_arduino(**params, antifoam=1, sample_signal=3, running_signal=1, stop_signal=0)
             time.sleep(.1)
         resume_write_thread()
         
@@ -139,13 +141,18 @@ def send_sample_signals():
         end_time = time.time() + 10
         while time.time() < end_time:
             send_signal(2)
-            time.sleep(.1)
+            time.sleep(1)
 
         print('Pobieranie próbki (signal 1)')
         end_time = time.time() + 10
         while time.time() < end_time:
             send_signal(1)
-            time.sleep(.1)
+            time.sleep(1)
+
+        end_time = time.time() + 10
+        while time.time() < end_time:
+            send_signal(3)
+            time.sleep(1)
         resume_write_thread()
 
     thread = threading.Thread(target=sample_signal_thread)

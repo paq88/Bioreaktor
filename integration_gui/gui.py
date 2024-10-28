@@ -61,7 +61,7 @@ class MyFrame(wx.Frame):
                 lbl = wx.StaticText(main_tab, label=label)
                 grid_main.Add(lbl, flag=wx.ALIGN_CENTER)
 
-                stir_rpm_choices = [400, 800, 1200, 1600, 2000]
+                stir_rpm_choices = [0, 100, 255]
                 self.stir_rpm_choice = wx.Choice(main_tab, choices=[str(x) for x in stir_rpm_choices])
                 self.stir_rpm_choice.SetSelection(0)
                 grid_main.Add(self.stir_rpm_choice, flag=wx.EXPAND)
@@ -72,7 +72,7 @@ class MyFrame(wx.Frame):
                 lbl = wx.StaticText(main_tab, label=label)
                 grid_main.Add(lbl, flag=wx.ALIGN_CENTER)
 
-                air_rpm_choices = [400, 800, 1200, 1600, 2000]
+                air_rpm_choices = [0, 100, 255]
                 self.air_rpm_choice = wx.Choice(main_tab, choices=[str(x) for x in air_rpm_choices])
                 self.air_rpm_choice.SetSelection(0)
                 grid_main.Add(self.air_rpm_choice, flag=wx.EXPAND)
