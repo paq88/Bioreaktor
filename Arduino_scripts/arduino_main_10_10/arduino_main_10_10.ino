@@ -10,7 +10,16 @@ float tempInput; // Temperature we want
 float tempInsideOutput; // Temperature we have inside
 float tempOutsideOutput; // Temperature we have outside
 int phInputSignal; // signal to add alkali/acid  --- 0 - nothing, 1-add drop of acid 2- add drop of alkali 
+
+// ph 
+// calibration coeficients
+float b0 = 15.169377;
+float b1 = -0.025857;
+
 float phValueOutput; // pH we have
+float phVoltage; // voltage from pH probe
+
+//o2
 float o2ValueOutput;
 int oxygenInput;
 int oxygenOutput;
@@ -38,8 +47,6 @@ unsigned long int totalCycleTime = 0;
 #define pwmAirPump 3
 
 #define waterPump 4
-
-
 #define pwmAntifoam 5
 #define antifoam 6
 
@@ -113,7 +120,7 @@ void setup() {
   commentOutput = "test_comment";
   tempInput = 30.0;
   phInputSignal = 0; 
-  stirRPM = 0; // send in PWM 
+  stirRPM = 255; // send in PWM 
   antifoamInput = 0;
   isRunning = 1;
   sampleSignal = 3; // 3 off
@@ -198,11 +205,9 @@ void loop() {
 
     // ==================================== MOTORS ===========================
       //digitalWrite(Stirrer, HIGH);
-      //digitalWrite(Stirrer, HIGH);
       //digitalWrite(airPump, HIGH);
       digitalWrite(waterPump, HIGH);
       //pwmAntifoam = 255;
-      engineStartStop(antifoam, 255);
       engineStartStop(airPump, airRpmInput);
       engineStartStop(Stirrer, stirRPM);
 
@@ -214,17 +219,12 @@ void loop() {
      tempOutsideOutput = tempSensorsOneWire.getTempC(tempOutsideSensorAdress); // z trytytka 
     //Place for PH measurement and update 
 
-    // Place for O2 sensor measurement and update 
-    //digitalWrite(probePumpSuck, LOW);
-   // digitalWrite(probePump, HIGH);
+    
 
     
-     // engineStartStop(airPump, 255);
-      //delay(4000);
-      //engineStartStop(airPump, 0);
-     // delay(1000);
+     
 
-//============================ heater ==================== 
+//============================ Temperature ==================== 
 
 
 
@@ -237,7 +237,11 @@ void loop() {
       digitalWrite (heaterRelay, LOW) ; // LOW MEANS HEATER IS ON!!! 
         }
 
-//=======================acid/alkali=============
+//======================= PH - acid/alkali=============
+
+// read from probe 
+phVoltage = analogRead(phSensor);
+phValueOutput = b0 + b1*phVoltage;
 
 if(phInputSignal == 0){}
 else if (phInputSignal == 1){ //drop of acid
@@ -249,8 +253,9 @@ engineStartStop(acidPump2, 0);
 
 }
 else if (phInputSignal == 2 ) { //drop  of alkali 
-
-digitalWrite(acidPump2,HIGH);
+engineStartStop(acidPump2, 255);
+delay(3000);
+engineStartStop(acidPump2, 0);
 
 }
 
@@ -280,7 +285,25 @@ digitalWrite(acidPump2,HIGH);
       analogWrite(pwmProbePump, 0); 
       commentOutput+="Process of sampling ended";
       }
-     
+
+    //====================== ANTIFOAM ================
+
+
+
+
+      if(antifoamInput == 0){
+        engineStartStop(antifoam,0);
+      }else if (antifoamInput == 1){
+      engineStartStop(antifoam, 255);
+      } else {
+        commentOutput+=", Wrong antifoam intput: ";
+        commentOutput+=antifoamInput;
+        
+      }
+
+
+
+
 //============================================
 
       //time = millis();
@@ -288,6 +311,7 @@ digitalWrite(acidPump2,HIGH);
       delay(3000);
 
 // ==================================== arduino output to rasbery
+{
     commentOutput = "isRunning: ";
     commentOutput += isRunning;
     Serial.print(totalCycleTime);
@@ -312,7 +336,7 @@ digitalWrite(acidPump2,HIGH);
     Serial.print(",");
     Serial.println(commentOutput);
     
-
+}
 
 
 
@@ -361,9 +385,9 @@ String* splitString(const String &str, char delimiter, int &count) {
 
 
 void engineStartStop(byte enginePin, byte PWM){
-byte pwmPin;
-byte eng = enginePin; 
-switch (eng){
+  byte pwmPin;
+  byte eng = enginePin; 
+  switch (eng){
     case airPump:
       pwmPin = pwmAirPump;
       break;

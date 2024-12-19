@@ -143,8 +143,8 @@ void loop() {
 
   phValueOutput = analogRead(o2Sensor); 
   //Serial.println(phNapiecieElektryczneBoMichalSieZesra);
-  engineStartStop(airPump, 255); 
-
+  engineStartStop(airPump, 0); 
+  engineStartStop(Stirrer, 0);
 
   Serial.println(phValueOutput);
 
