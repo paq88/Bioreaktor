@@ -57,13 +57,13 @@ unsigned long int totalCycleTime = 0;
 
 
 #define pwmAcidPump2 10
-#define pwmRulePump1 11
+#define pwmAlkaliPump1 11
 #define pwmStirrer 12 // speed of Stirrer (mieszadlo)
 #define free13 13 // freee pwm
 
 #define Stirrer 14
 #define acidPump2 15 // peristalticPump 2
-#define rulePump1 16 // peristalticPump 1
+#define AlkaliPump1 16 // peristalticPump 1
 
 #define phSensor A1 //ph Sensor 15 pin analog
 #define o2Sensor A2 // o2 sensor 16 pin analog
@@ -100,10 +100,10 @@ void setup() {
 
    
   pinMode(pwmAcidPump2, OUTPUT);
-  pinMode(pwmRulePump1, OUTPUT);
+  pinMode(pwmAlkaliPump1, OUTPUT);
   pinMode(pwmStirrer, OUTPUT); 
   pinMode(acidPump2, OUTPUT);    
-  pinMode(rulePump1, OUTPUT);
+  pinMode(alkaliPump1, OUTPUT);
   
   //pinMode(tempSensors, INPUT); // instance of onewire class
   
@@ -155,7 +155,7 @@ void loop() {
 
     // Convert the strings to appropriate types
     tempInput = input_arr[0].toFloat();
-    phInputSignal = input_arr[1].toInt(); // ph input is now signal to add one drop of alkali/acid
+    phInputSignal = input_arr[1].toInt(); // ph input is now signal to add one drop of alkali/acid 0 - nothing 1- acid (lowers pH) 2 - alkali (ph- UP )
     stirRPM = input_arr[2].toInt();
     antifoamInput = input_arr[3].toInt();
     airRpmInput = input_arr[4].toInt();
@@ -253,9 +253,9 @@ engineStartStop(acidPump2, 0);
 
 }
 else if (phInputSignal == 2 ) { //drop  of alkali 
-engineStartStop(acidPump2, 255);
+engineStartStop(alkaliPump1, 255);
 delay(3000);
-engineStartStop(acidPump2, 0);
+engineStartStop(alkaliPump1, 0);
 
 }
 
@@ -400,8 +400,8 @@ void engineStartStop(byte enginePin, byte PWM){
     case acidPump2:
       pwmPin = pwmAcidPump2; 
       break; 
-    case rulePump1:
-      pwmPin = pwmRulePump1; 
+    case alkaliPump1:
+      pwmPin = pwmAlkaliPump1; 
       break; 
     case antifoam: 
       pwmPin = pwmAntifoam; 
