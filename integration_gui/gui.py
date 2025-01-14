@@ -5,15 +5,18 @@ import time
 from io import BytesIO
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
-from comms import start_read_thread, write_thread, stop_write_thread, update_params, pause_write_thread, resume_write_thread, start_session, send_sample_signals, send_antifoam_signal, temp_inside_list, temp_outside_list, oxygen_list, ph_list, read_logs, update_working_time, update_cycle_time
+from comms import start_read_thread, write_thread, stop_write_thread, update_params, pause_write_thread, resume_write_thread, start_session, send_sample_signals, send_antifoam_signal, temp_inside_list, temp_outside_list, oxygen_list, ph_list, read_logs, update_working_time, update_cycle_time, save_plots, compare_ph_values
 
 
 class MyFrame(wx.Frame):
     def __init__(self, *args, **kw):
         super(MyFrame, self).__init__(*args, **kw)
+        font = wx.Font(14,wx.NORMAL, wx.NORMAL,  wx.NORMAL)
         panel = wx.Panel(self)
+        panel.SetFont(font)
         vbox = wx.BoxSizer(wx.VERTICAL)
         notebook = wx.Notebook(panel)
+        self.ShowFullScreen(True)
 
 
         # Tabs declaration
@@ -55,63 +58,67 @@ class MyFrame(wx.Frame):
         for label, cfg in self.config.items():
             if label == "Stirr. RPM":
                 lbl = wx.StaticText(main_tab, label=label)
+                lbl.SetFont(font)
                 grid_main.Add(lbl, flag=wx.ALIGN_CENTER)
 
                 stir_rpm_choices = [0, 100, 255]
                 self.stir_rpm_choice = wx.Choice(main_tab, choices=[str(x) for x in stir_rpm_choices])
                 self.stir_rpm_choice.SetSelection(0)
+                self.stir_rpm_choice.SetFont(font)
                 grid_main.Add(self.stir_rpm_choice, flag=wx.EXPAND)
 
                 self.stir_rpm_choice.Bind(wx.EVT_CHOICE, self.stir_on_rpm_choice)
                 
             elif label == 'Air RPM':
                 lbl = wx.StaticText(main_tab, label=label)
+                lbl.SetFont(font)
                 grid_main.Add(lbl, flag=wx.ALIGN_CENTER)
 
                 air_rpm_choices = [0, 100, 255]
                 self.air_rpm_choice = wx.Choice(main_tab, choices=[str(x) for x in air_rpm_choices])
                 self.air_rpm_choice.SetSelection(0)
+                self.air_rpm_choice.SetFont(font)
                 grid_main.Add(self.air_rpm_choice, flag=wx.EXPAND)
 
                 self.air_rpm_choice.Bind(wx.EVT_CHOICE, self.air_on_rpm_choice)
 
             else:
                 lbl = wx.StaticText(main_tab, label=label)
+                lbl.SetFont(font)
                 grid_main.Add(lbl, flag=wx.ALIGN_CENTER)
 
-                txt = wx.TextCtrl(main_tab, value=str(0))
-                grid_main.Add(txt, flag=wx.EXPAND)
+                txt = wx.TextCtrl(main_tab, style=wx.TE_CENTER, value=str(0), size=(120,120))
+                txt.SetFont(font)
+                grid_main.Add(txt, flag=wx.ALIGN_LEFT)
                 self.text_controls[label] = txt
 
-                up_button = wx.Button(main_tab, label="▲")
-                down_button = wx.Button(main_tab, label="▼")
+                up_button = wx.Button(main_tab, label="▲", size=(120,120))
+                down_button = wx.Button(main_tab, label="▼", size=(120,120))
+                up_button.SetFont(font)
+                down_button.SetFont(font)
                 grid_main.Add(up_button)
                 grid_main.Add(down_button)
 
                 up_button.Bind(wx.EVT_BUTTON, lambda evt, lbl=label: self.change_value(evt, lbl, 1))
                 down_button.Bind(wx.EVT_BUTTON, lambda evt, lbl=label: self.change_value(evt, lbl, -1))
 
+        main_tab.SetSizer(grid_main)
+        
         # Create layout in readings tab
-        grid_readings = wx.FlexGridSizer(6, 2, 10, 10)
+        grid_readings = wx.BoxSizer(wx.VERTICAL)
         self.text_readings = {}
         for label, cfg in self.readings_params.items():
             lbl = wx.StaticText(readings, label=label)
-            grid_readings.Add(lbl, flag=wx.ALIGN_CENTER)
+            lbl.SetFont(font)
+            grid_readings.Add(lbl, flag=wx.EXPAND | wx.ALL, border=20)
             
             txt = wx.TextCtrl(readings, style=wx.TE_READONLY, value=str(0))
-            grid_readings.Add(txt, flag=wx.EXPAND)
+            txt.SetFont(font)
+            grid_readings.Add(txt, flag=wx.EXPAND | wx.ALL, border=0)
             self.readings_params[label] = txt
     
         readings.SetSizer(grid_readings)
-        
-        #Stoper
-        self.start_time = 0
-        self.paused_time = 0
-        self.timer_running = False
-        self.timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.update_timer, self.timer)
-
-        main_tab.SetSizer(grid_main)
+        grid_readings.Fit(self)
         
         #Timer
         self.countdown_time = 0
@@ -120,17 +127,30 @@ class MyFrame(wx.Frame):
         self.countdown_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.update_countdown_timer, self.countdown_timer)
 
-        countdown_label = wx.StaticText(panel, label="Cycle time:")
-        self.countdown_input = wx.TextCtrl(panel, value="00:00:20", style=wx.TE_CENTER)
+        #Stopwatch
+        self.start_time = 0
+        self.paused_time = 0
+        self.timer_running = False
+        self.timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.update_timer, self.timer)
 
-        self.button_h_plus = wx.Button(panel, label="H+")
-        self.button_h_minus = wx.Button(panel, label="H-")
-        self.button_m_plus = wx.Button(panel, label="M+")
-        self.button_m_minus = wx.Button(panel, label="M-")
-        self.button_s_plus = wx.Button(panel, label="S+")
-        self.button_s_minus = wx.Button(panel, label="S-")
+        countdown_label = wx.StaticText(panel, label="Cycle time:")
+        countdown_label.SetFont(font)
+        self.countdown_input = wx.TextCtrl(panel, value="00:00:20", style=wx.TE_CENTER, size=(120,50))
+        self.countdown_input.SetFont(font)
+
+        self.button_d_plus = wx.Button(panel, label="D+", size=(50,50))
+        self.button_d_minus = wx.Button(panel, label="D-", size=(50,50))
+        self.button_h_plus = wx.Button(panel, label="H+", size=(50,50))
+        self.button_h_minus = wx.Button(panel, label="H-", size=(50,50))
+        self.button_m_plus = wx.Button(panel, label="M+", size=(50,50))
+        self.button_m_minus = wx.Button(panel, label="M-", size=(50,50))
+        self.button_s_plus = wx.Button(panel, label="S+", size=(50,50))
+        self.button_s_minus = wx.Button(panel, label="S-", size=(50,50))
 
         # Bind button events to functions
+        self.button_d_plus.Bind(wx.EVT_BUTTON, self.on_d_plus)
+        self.button_d_minus.Bind(wx.EVT_BUTTON, self.on_d_minus)
         self.button_h_plus.Bind(wx.EVT_BUTTON, self.on_h_plus)
         self.button_h_minus.Bind(wx.EVT_BUTTON, self.on_h_minus)
         self.button_m_plus.Bind(wx.EVT_BUTTON, self.on_m_plus)
@@ -138,11 +158,23 @@ class MyFrame(wx.Frame):
         self.button_s_plus.Bind(wx.EVT_BUTTON, self.on_s_plus)
         self.button_s_minus.Bind(wx.EVT_BUTTON, self.on_s_minus)
         
+        # Set fonts for buttons
+        self.button_d_plus.SetFont(font)
+        self.button_d_minus.SetFont(font)
+        self.button_h_plus.SetFont(font)
+        self.button_h_minus.SetFont(font)
+        self.button_m_plus.SetFont(font)
+        self.button_m_minus.SetFont(font)
+        self.button_s_plus.SetFont(font)
+        self.button_s_minus.SetFont(font)
+        
         # Layout for timer
         hbox_countdown = wx.BoxSizer(wx.HORIZONTAL)
         hbox_countdown.AddSpacer(10)
         hbox_countdown.Add(countdown_label, flag=wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, border=5)
         hbox_countdown.Add(self.countdown_input, flag=wx.ALL, border=5)
+        hbox_countdown.Add(self.button_d_plus, flag=wx.ALL, border=5)
+        hbox_countdown.Add(self.button_d_minus, flag=wx.ALL, border=5)
         hbox_countdown.Add(self.button_h_plus, flag=wx.ALL, border=5)
         hbox_countdown.Add(self.button_h_minus, flag=wx.ALL, border=5)
         hbox_countdown.Add(self.button_m_plus, flag=wx.ALL, border=5)
@@ -151,37 +183,43 @@ class MyFrame(wx.Frame):
         hbox_countdown.Add(self.button_s_minus, flag=wx.ALL, border=5)
         
 
-        vbox.Add(hbox_countdown, flag=wx.ALIGN_LEFT, border=10)
+        vbox.Add(hbox_countdown, flag=wx.ALIGN_CENTER, border=10)
 
         # Textfield for timer
-        self.timer_box = wx.TextCtrl(panel, style=wx.TE_READONLY | wx.TE_CENTER)
-        self.timer_box.SetMinSize((80, 25))
+        self.timer_box = wx.TextCtrl(panel, style=wx.TE_READONLY | wx.TE_CENTER, size=(120,50))
+        self.timer_box.SetMinSize((120, 50))
         self.timer_box.SetValue("00:00:00")
         timer_label = wx.StaticText(panel, label="Working time:")
+        timer_label.SetFont(font)
+        self.timer_box.SetFont(font)
 
-        # Layour for stoper
+        # Layout for stopwatch
         hbox_timer = wx.BoxSizer(wx.HORIZONTAL)
         hbox_timer.AddSpacer(10)
         hbox_timer.Add(timer_label, flag=wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, border=5)
-        hbox_timer.Add(self.timer_box, flag=wx.ALIGN_LEFT | wx.ALL, border=5)
-        self.running_button = wx.Button(panel, label="Start", size=(120, 25))
-        self.stop_button = wx.Button(panel, label="Stop", size=(120, 25))
+        hbox_timer.Add(self.timer_box, flag=wx.ALIGN_CENTER | wx.ALL, border=5)
+        self.running_button = wx.Button(panel, label="Start", size=(240, 50))
+        self.stop_button = wx.Button(panel, label="Stop", size=(240, 50))
+        self.running_button.SetFont(font)
+        self.stop_button.SetFont(font)
         hbox_timer.Add(self.running_button, flag=wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, border=5)
         hbox_timer.Add(self.stop_button, flag=wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, border=5)
         
         
-        vbox.Add(hbox_timer, flag=wx.ALIGN_LEFT, border=10)
+        vbox.Add(hbox_timer, flag=wx.ALIGN_CENTER, border=10)
         vbox.Add(notebook, 1, flag=wx.EXPAND | wx.ALL, border=10)
-        
-        
+               
         # Main window
         self.SetTitle("Bioreaktor GUI")
-        self.SetSize((600, 400))
+        self.SetSize((1280, 720))
         self.Centre()
 
         # Antifoam and Draw Sample buttons
-        self.antifoam = wx.Button(main_tab, label="Anti Foam", size=(120,25))
-        self.drawsample = wx.Button(main_tab, label="Draw Sample", size=(120,25))
+        self.antifoam = wx.Button(main_tab, label="Anti Foam", size=(240,50))
+        self.drawsample = wx.Button(main_tab, label="Draw Sample", size=(240,50))
+        
+        self.antifoam.SetFont(font)
+        self.drawsample.SetFont(font)
         grid_main.Add(self.antifoam, flag=wx.ALIGN_CENTER)
         grid_main.Add(self.drawsample, flag=wx.ALIGN_CENTER)
         
@@ -221,7 +259,7 @@ class MyFrame(wx.Frame):
 
         # Layout for events log tab
         events_vbox = wx.BoxSizer(wx.VERTICAL)
-        self.text_ctrl = wx.TextCtrl(events_tab, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(1000, 1000))
+        self.text_ctrl = wx.TextCtrl(events_tab, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(1000, 1200))
         events_vbox.Add(self.text_ctrl, 1, flag=wx.EXPAND)
         
 
@@ -235,13 +273,19 @@ class MyFrame(wx.Frame):
         current_time = self.countdown_input.GetValue()
         hours, minutes, seconds = map(int, current_time.split(":"))
 
-        hours = max(0, min(23, hours + hour_delta))
+        hours = max(0, min(999, hours + hour_delta))
         minutes = max(0, min(59, minutes + minute_delta))
         seconds = max(0, min(59, seconds + second_delta))
 
         new_time = f"{hours:02}:{minutes:02}:{seconds:02}"
         self.countdown_input.SetValue(new_time)
 
+    def on_d_plus(self, event):
+        self.update_time(hour_delta=24)
+
+    def on_d_minus(self, event):
+        self.update_time(hour_delta=-24)
+        
     def on_h_plus(self, event):
         self.update_time(hour_delta=1)
 
@@ -335,6 +379,7 @@ class MyFrame(wx.Frame):
             "Air_RPM": int(self.air_rpm_choice.GetString(self.air_rpm_choice.GetSelection())),
         }
         update_params(params)
+        compare_ph_values(params["pH"])
 
     def update_timer(self, event):
         """Updates working timer values"""
@@ -391,7 +436,7 @@ class MyFrame(wx.Frame):
         self.ax_temp_inside.plot(temp_inside_list, label='Temperature inside', color='g')
         self.ax_temp_inside.plot(temp_outside_list, label='Temperature outside', color='r')
         self.ax_temp_inside.set_title('Temperature')
-        self.ax_temp_inside.set_xlabel('Time')
+        self.ax_temp_inside.set_xlabel('Time [s]')
         self.ax_temp_inside.set_ylabel('Temperature (°C)')
         self.ax_temp_inside.legend()
         self.canvas_temp_inside.draw()
@@ -403,7 +448,7 @@ class MyFrame(wx.Frame):
         self.ax_ph.clear()
         self.ax_ph.plot(ph_list, label='pH', color='r')
         self.ax_ph.set_title('pH levels')
-        self.ax_ph.set_xlabel('Time')
+        self.ax_ph.set_xlabel('Time [s]')
         self.ax_ph.set_ylabel('pH')
         self.canvas_ph.draw()
 
@@ -414,7 +459,7 @@ class MyFrame(wx.Frame):
         self.ax_oxygen.clear()
         self.ax_oxygen.plot(oxygen_list, color='r')
         self.ax_oxygen.set_title('Oxygen levels')
-        self.ax_oxygen.set_xlabel('Time')
+        self.ax_oxygen.set_xlabel('Time [s]')
         self.ax_oxygen.set_ylabel('Oxygen')
         self.canvas_oxygen.draw()
           
@@ -423,6 +468,8 @@ class MyFrame(wx.Frame):
             if self.running_button.GetLabel() == "Start":
                 start_session()
                 self.update_params_from_gui() 
+                gui_ph_value = float(self.text_controls['pH'].GetValue())
+                compare_ph_values(gui_ph_value)
                 write_thread() 
                 start_read_thread(self.update_gui_with_data)
                 read_logs(self.update_events)
@@ -449,10 +496,11 @@ class MyFrame(wx.Frame):
             self.running_button.SetLabel("Resume")
             self.is_paused = True
 
-        
+   
     def on_stop(self, event):
         self.stop_process(wx.EVT_BUTTON)
         stop_write_thread()
+        save_plots(self.ax_temp_inside.figure, self.ax_ph.figure, self.ax_oxygen.figure)
         self.running_button.SetLabel("Start")
         self.is_paused = True
 
