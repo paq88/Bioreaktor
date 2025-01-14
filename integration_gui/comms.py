@@ -1,30 +1,35 @@
 import serial
+import sys
 import time
 import threading
 import pandas as pd
 from secrets import token_hex
 import os
+import matplotlib.pyplot as plt
 
 lock = threading.Lock()
 params = {}
 write_thread_instance = None
 session = None
-parent = "/tmp/"
+parent = "/home/bioreaktor/tmp/"
 
 
 # Initialize serial communication with the Arduino        
-arduino = serial.Serial(port='/dev/ttyACM0', baudrate=115200, timeout=.1) # Linux
-arduino.flush()
+try:
+    arduino = serial.Serial(port='/dev/ttyACM0', baudrate=115200, timeout=.1)
+    arduino.flush()
+    arduino.write(bytes("0,0,0,0,0,0,0,0", 'utf-8'))
+except:
+    raise Exception("Communication error. Check if Arduino is connected into correct port or contact Administrator.")
 
 
 def write_to_arduino(temp, pH, Stirr_RPM, antifoam, Air_RPM, running_signal, sample_signal=0, stop_signal=0):
     """Send variables to arduino"""
     output_string = f"{temp},{pH},{Stirr_RPM},{antifoam},{Air_RPM},{running_signal},{sample_signal},{stop_signal} \n"
     arduino.write(bytes(output_string, 'utf-8'))
-    #print(f'Sent {output_string}')
-   
+    print(f'Sent {output_string}')
         
-out_cols = ['temp_inside', 'temp_outside','ph', 'stirr_rpm', 'air_rpm', 'oxygen']
+out_cols = ['cycle', 'temp_inside', 'temp_outside','ph', 'oxygen', 'antifoam', 'stirr_rpm', 'air_rpm', 'sample', 'isrunning', 'comment']
 global old_reads
 old_reads = {}
 
@@ -43,8 +48,7 @@ def read_from_arduino(callback):
         
 def start_session():
     """Session initialize"""
-    global session
-    global path
+    global session, path
     
     uid = token_hex(16)
     session = uid
@@ -77,7 +81,9 @@ def write_thread(interval=1):
     def thread_function():
         while not stop_event.is_set():
             if not pause_event.is_set():
-                write_to_arduino(**params,antifoam=0, running_signal=1, stop_signal=0)
+                local_params = params.copy()
+                local_params.update(pH=0)
+                write_to_arduino(**local_params, antifoam=0, running_signal=1, stop_signal=0)
             time.sleep(interval)
     
     stop_event.clear()  
@@ -85,6 +91,14 @@ def write_thread(interval=1):
     write_thread_instance = threading.Thread(target=thread_function)
     write_thread_instance.daemon = True
     write_thread_instance.start()
+
+def save_plots(temp_plot, ph_plot, oxygen_plot):
+    """Save all plots to the session folder"""
+    global path
+
+    temp_plot.savefig(os.path.join(path, "temperature_plot.png"))
+    ph_plot.savefig(os.path.join(path, "ph_plot.png"))
+    oxygen_plot.savefig(os.path.join(path, "oxygen_plot.png"))
     
 def update_params(new_params):
     """Update params from GUI"""
@@ -120,19 +134,54 @@ def send_antifoam_signal():
         end_time = time.time() + 10
         log_events(f'\t{time.ctime()[11:19]}\t|\t{cycle_time}\t|\t{working_time}\t|\tAnti-foam added\n')
         while time.time() < end_time:
-            write_to_arduino(**params, antifoam=1, sample_signal=3, running_signal=1, stop_signal=0)
+            local_params = params.copy()
+            local_params.update(pH=0)
+            write_to_arduino(**local_params, antifoam=1, sample_signal=3, running_signal=1, stop_signal=0)
             time.sleep(.1)
         resume_write_thread(3)
         
     af_thread = threading.Thread(target=antifoam_thread)
     af_thread.daemon = True
     af_thread.start()
+
+def compare_ph_values(gui_ph_value, interval=60, error_margin=0.5):
+    """Compare pH values from GUI and Arduino, and send signals accordingly."""
+    def compare_function():
+        while not stop_event.is_set():
+            pause_write_thread(3)
+            arduino_ph_value = float(old_reads.get('pH', 0))
+            if arduino_ph_value < gui_ph_value - error_margin:
+                pause_write_thread(3)
+                local_params = params.copy()
+                local_params.update(pH=2)
+                end_time = time.time() + 5
+                while time.time() < end_time:
+                    time.sleep(.1)
+                    write_to_arduino(**local_params, antifoam=0, running_signal=1, stop_signal=0)
+                resume_write_thread(3)
+            elif arduino_ph_value > gui_ph_value + error_margin:
+                pause_write_thread(3)
+                local_params = params.copy()
+                local_params.update(pH=1)
+                end_time = time.time() + 5
+                while time.time() < end_time:
+                    time.sleep(.1)
+                    write_to_arduino(**local_params, antifoam=0, running_signal=1, stop_signal=0)
+                resume_write_thread(3)
+            resume_write_thread(3)
+            time.sleep(interval)
+    
+    ph_thread = threading.Thread(target=compare_function)
+    ph_thread.daemon = True
+    ph_thread.start()
             
 def send_sample_signals():
     """Draw sample from mixture"""
     def send_signal(sample_signal):
         sample = sample_signal
-        write_to_arduino(**params, antifoam=0, sample_signal=sample, running_signal=1, stop_signal=0)
+        local_params = params.copy()
+        local_params.update(pH=0)
+        write_to_arduino(**local_params, antifoam=0, sample_signal=sample, running_signal=1, stop_signal=0)
     
     def sample_signal_thread():
         pause_write_thread(2)
