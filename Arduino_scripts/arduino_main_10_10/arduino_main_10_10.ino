@@ -13,16 +13,21 @@ int phInputSignal; // signal to add alkali/acid  --- 0 - nothing, 1-add drop of 
 
 // ph 
 // calibration coeficients
-float b0 = 15.169377;
-float b1 = -0.025857;
+float b_ph0 = 15.169377;
+float b_ph1 = -0.025857;
+// calibration coeficients o2
+float b_o2_0 = -2.5641  ;
+float b_o2_1 = 0.05128  ;
 
 float phValueOutput; // pH we have
 float phVoltage; // voltage from pH probe
 
 //o2
-float o2ValueOutput;
-int oxygenInput;
-int oxygenOutput;
+float o2Voltage; // voltage from o2 sensor 
+float o2ValueOutput; //o2 we have 
+
+
+
 int stirRPM;
 int antifoamInput;
 int antifoamOutput;
@@ -63,7 +68,7 @@ unsigned long int totalCycleTime = 0;
 
 #define Stirrer 14
 #define acidPump2 15 // peristalticPump 2
-#define AlkaliPump1 16 // peristalticPump 1
+#define alkaliPump1 16 // peristalticPump 1
 
 #define phSensor A1 //ph Sensor 15 pin analog
 #define o2Sensor A2 // o2 sensor 16 pin analog
@@ -204,10 +209,8 @@ void loop() {
 
 
     // ==================================== MOTORS ===========================
-      //digitalWrite(Stirrer, HIGH);
-      //digitalWrite(airPump, HIGH);
+      
       digitalWrite(waterPump, HIGH);
-      //pwmAntifoam = 255;
       engineStartStop(airPump, airRpmInput);
       engineStartStop(Stirrer, stirRPM);
 
@@ -241,7 +244,7 @@ void loop() {
 
 // read from probe 
 phVoltage = analogRead(phSensor);
-phValueOutput = b0 + b1*phVoltage;
+phValueOutput = b_ph0 + b_ph1*phVoltage;
 
 if(phInputSignal == 0){}
 else if (phInputSignal == 1){ //drop of acid
@@ -258,6 +261,12 @@ delay(3000);
 engineStartStop(alkaliPump1, 0);
 
 }
+
+
+//==========================o2==================
+o2Voltage = analogRead(o2Sensor);
+o2ValueOutput = b_o2_0 + (o2Voltage*5000/1024)*b_o2_1;
+
 
 
 
@@ -322,7 +331,7 @@ engineStartStop(alkaliPump1, 0);
     Serial.print(",");
     Serial.print(phValueOutput);
     Serial.print(",");
-    Serial.print(o2ValueOutput);
+    Serial.print(o2ValueOutput); // percentage of o2 in water (kinda)
     Serial.print(",");
     Serial.print(antifoamOutput);
     Serial.print(",");
@@ -343,10 +352,30 @@ engineStartStop(alkaliPump1, 0);
 
 
     } else if (isRunning == 0) {
-      Serial.println("is Running == 0");
+      //Serial.println("is Running == 0");
+      digitalWrite(waterPump, LOW);
+      engineStartStop(airPump, 0);
+      engineStartStop(Stirrer, 0);
+
+
+    digitalWrite(heaterRelay, LOW) ;
+
+
+    digitalWrite(probePump, LOW);
+    digitalWrite(probePumpSuck, LOW);
+    analogWrite(pwmProbePump, 0); 
+
+    engineStartStop(antifoam,0);
+
+
+    engineStartStop(acidPump2, 0);
+    engineStartStop(alkaliPump1, 0);
+
       delay(3000);
       //NOTHING
-   
+
+
+
     }
  
 
