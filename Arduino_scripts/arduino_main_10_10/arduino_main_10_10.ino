@@ -44,6 +44,7 @@ unsigned long int totalCycleTime = 0;
 
 
 // define pins
+//(subboard pins)
  
 #define free0 0
 #define free1 1
@@ -70,16 +71,16 @@ unsigned long int totalCycleTime = 0;
 #define acidPump2 15 // peristalticPump 2
 #define alkaliPump1 16 // peristalticPump 1
 
-#define phSensor A1 //ph Sensor 15 pin analog
-#define o2Sensor A2 // o2 sensor 16 pin analog
+#define phSensor A1 //ph Sensor 15 pin analog   (13)
+#define o2Sensor A2 // o2 sensor 16 pin analog  (14)
 
 
 
 
-#define tempSensors 52 // both temperature sensors digital 
+#define tempSensors 52 // both temperature sensors digital (16)
 
 
-#define heaterRelay 53 // heater relay digital 
+#define heaterRelay 53 // heater relay digital (11)
 
 OneWire oneWire(tempSensors);
 DallasTemperature tempSensorsOneWire(&oneWire);
@@ -125,12 +126,12 @@ void setup() {
   commentOutput = "test_comment";
   tempInput = 30.0;
   phInputSignal = 0; 
-  stirRPM = 255; // send in PWM 
+  stirRPM = 0; // send in PWM 
   antifoamInput = 0;
   isRunning = 1;
   sampleSignal = 3; // 3 off
   stopSignal = 0;
-  airRpmInput = 255;
+  airRpmInput = 0;
 
 }
 
@@ -358,7 +359,7 @@ o2ValueOutput = b_o2_0 + (o2Voltage*5000/1024)*b_o2_1;
       engineStartStop(Stirrer, 0);
 
 
-    digitalWrite(heaterRelay, LOW) ;
+    digitalWrite(heaterRelay, HIGH) ; // high means OFF
 
 
     digitalWrite(probePump, LOW);
