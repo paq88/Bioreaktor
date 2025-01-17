@@ -5,7 +5,7 @@ import time
 from io import BytesIO
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
-from comms import start_read_thread, write_thread, stop_write_thread, update_params, pause_write_thread, resume_write_thread, start_session, send_sample_signals, send_antifoam_signal, temp_inside_list, temp_outside_list, oxygen_list, ph_list, read_logs, update_working_time, update_cycle_time, save_plots, compare_ph_values
+from comms import start_read_thread, write_thread, stop_write_thread, update_params, pause_write_thread, resume_write_thread, start_session, send_sample_signals, send_antifoam_signal, temp_inside_list, temp_outside_list, oxygen_list, ph_list, read_logs, update_working_time, update_cycle_time, save_plots, compare_ph_values, resume_ph_thread, pause_ph_thread
 
 
 class MyFrame(wx.Frame):
@@ -268,8 +268,15 @@ class MyFrame(wx.Frame):
         self.SetSize((1500, 850))
         self.Centre()
         
+    def format_time(self, total_seconds):
+        """Formats time as HHH:MM:SS for large hour values."""
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        return f"{hours:03}:{minutes:02}:{seconds:02}"
+        
     def update_time(self, hour_delta=0, minute_delta=0, second_delta=0):
-        """ Helper function to update the time text control """
+        """Helper function to update the time text control."""
         current_time = self.countdown_input.GetValue()
         hours, minutes, seconds = map(int, current_time.split(":"))
 
@@ -277,7 +284,7 @@ class MyFrame(wx.Frame):
         minutes = max(0, min(59, minutes + minute_delta))
         seconds = max(0, min(59, seconds + second_delta))
 
-        new_time = f"{hours:02}:{minutes:02}:{seconds:02}"
+        new_time = f"{hours:03}:{minutes:02}:{seconds:02}"
         self.countdown_input.SetValue(new_time)
 
     def on_d_plus(self, event):
@@ -329,12 +336,14 @@ class MyFrame(wx.Frame):
                 self.countdown_timer.Start(1000)
                 self.countdown_paused = False
 
+
     def update_countdown_timer(self, event):
-        """Updates cycle timer values"""
+        """Updates cycle timer values."""
         if self.countdown_running and not self.countdown_paused:
             if self.countdown_time > 0:
                 self.countdown_time -= 1
-                updated_time = time.strftime('%H:%M:%S', time.gmtime(self.countdown_time))
+                print(self.countdown_time)
+                updated_time = self.format_time(self.countdown_time)
                 update_cycle_time(updated_time)
                 self.countdown_input.SetValue(updated_time)
             else:
@@ -475,6 +484,7 @@ class MyFrame(wx.Frame):
                 read_logs(self.update_events)
             else:
                 resume_write_thread(1)
+                resume_ph_thread()
 
             if self.countdown_running and self.countdown_paused:
                 self.countdown_timer.Start(1000)
@@ -487,6 +497,7 @@ class MyFrame(wx.Frame):
             self.is_paused = False
         else:
             pause_write_thread(1)
+            pause_ph_thread()
             self.toggle_timer(wx.EVT_BUTTON)
             
             if self.countdown_running and not self.countdown_paused:

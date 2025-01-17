@@ -11,7 +11,8 @@ lock = threading.Lock()
 params = {}
 write_thread_instance = None
 session = None
-parent = "/home/bioreaktor/tmp/"
+#parent = "/home/bioreaktor/tmp/"
+parent = "/tmp/"
 
 
 # Initialize serial communication with the Arduino        
@@ -115,6 +116,12 @@ def stop_write_thread():
     stop_event.set()
     write_to_arduino(temp=0, pH=0, Stirr_RPM=0, antifoam=0, Air_RPM=0, sample_signal=0, running_signal=0, stop_signal=1)
 
+def pause_ph_thread():
+    ph_pause_event.set()
+    
+def resume_ph_thread():
+    ph_pause_event.clear()
+    
 def pause_write_thread(reason=0):
     """Pause write thread"""
     pause_event.set()
@@ -147,27 +154,23 @@ def send_antifoam_signal():
 def compare_ph_values(gui_ph_value, interval=60, error_margin=0.5):
     """Compare pH values from GUI and Arduino, and send signals accordingly."""
     def compare_function():
-        while not stop_event.is_set():
+        while not ph_pause_event.is_set():
             pause_write_thread(3)
             arduino_ph_value = float(old_reads.get('pH', 0))
             if arduino_ph_value < gui_ph_value - error_margin:
-                pause_write_thread(3)
                 local_params = params.copy()
                 local_params.update(pH=2)
                 end_time = time.time() + 5
                 while time.time() < end_time:
                     time.sleep(.1)
                     write_to_arduino(**local_params, antifoam=0, running_signal=1, stop_signal=0)
-                resume_write_thread(3)
             elif arduino_ph_value > gui_ph_value + error_margin:
-                pause_write_thread(3)
                 local_params = params.copy()
                 local_params.update(pH=1)
                 end_time = time.time() + 5
                 while time.time() < end_time:
                     time.sleep(.1)
                     write_to_arduino(**local_params, antifoam=0, running_signal=1, stop_signal=0)
-                resume_write_thread(3)
             resume_write_thread(3)
             time.sleep(interval)
     
@@ -241,6 +244,7 @@ def update_working_time(timer):
     
 stop_event = threading.Event()
 pause_event = threading.Event()
+ph_pause_event = threading.Event()
 global temp_inside_list
 global temp_outside_list
 global ph_list
