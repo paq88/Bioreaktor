@@ -124,14 +124,14 @@ void setup() {
 // ======= manual input for debugging 
   sampleSignal = 0;
   commentOutput = "test_comment";
-  tempInput = 30.0;
-  phInputSignal = 0; 
-  stirRPM = 0; // send in PWM 
+  tempInput = 28.0;
+  phInputSignal = 7; 
+  stirRPM = 255; // send in PWM 
   antifoamInput = 0;
   isRunning = 1;
   sampleSignal = 3; // 3 off
   stopSignal = 0;
-  airRpmInput = 0;
+  airRpmInput = 255;
 
 }
 
@@ -234,10 +234,10 @@ void loop() {
 
      
 
-     if(tempOutsideOutput >= tempInput){
+     if(tempInsideOutput >= tempInput){
       digitalWrite (heaterRelay, HIGH) ; // HIGH MEANS HEATER IS OFF!!! 
       }
-      else if(tempOutsideOutput < tempInput){
+      else if(tempInsideOutput < tempInput){
       digitalWrite (heaterRelay, LOW) ; // LOW MEANS HEATER IS ON!!! 
         }
 
